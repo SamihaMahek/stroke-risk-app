@@ -71,6 +71,7 @@ def home():
 def predict():
     try:
         X = preprocess_input(request.form)
+        # Fixed: Added [0][1] back to extract the exact stroke class probability number
         proba = model.predict_proba(X)[0][1]
         prediction = int(proba >= 0.5)
 
@@ -93,7 +94,7 @@ def predict():
             chart_importance[clean_name] = round(float(weight) * 100, 1)
 
         # Sort features so the strongest drivers show first
-        sorted_importance = dict(sorted(chart_importance.items(), key=lambda item: item[1], reverse=True))
+        sorted_importance = dict(sorted(chart_importance.items(), key=lambda item: item, reverse=True))
 
         result = {
             "prediction": prediction,
