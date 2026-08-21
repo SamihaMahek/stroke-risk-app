@@ -1,45 +1,101 @@
 {% extends "base.html" %}
 {% block content %}
 
-<section class="result-wrap">
-  <div class="result-card risk-{{ result.risk_class }}">
-    <p class="eyebrow">Assessment result</p>
-    <div class="result-figure">
-      <span class="result-percent">{{ result.risk_percent }}<span class="pct-sign">%</span></span>
-      <span class="result-level">{{ result.risk_level }} risk</span>
+<!-- Include the Chart.js framework engine via an official CDN header link -->
+<script src="https://jsdelivr.net"></script>
+
+<div class="container mt-4">
+    <!-- Split Layout Grid: Side-by-side on desktop screen profiles, vertical stack on smartphones -->
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+        
+        <!-- COLUMN 1: Clinical Assessment Result Card -->
+        <div class="col">
+            <div class="card h-100 p-4 shadow-sm border-start border-4 {% if result.risk_level == 'High' %}border-danger{% elif result.risk_level == 'Moderate' %}border-warning{% else %}border-success{% endif %}">
+                <span class="text-muted text-uppercase small tracking-wider">Assessment Result</span>
+                
+                <div class="d-flex align-items-center gap-3 my-3">
+                    <h1 class="display-3 fw-bold m-0">{{ result.risk_percent }}%</h1>
+                    <span class="badge {% if result.risk_level == 'High' %}bg-danger{% elif result.risk_level == 'Moderate' %}bg-warning text-dark{% else %}bg-success{% endif %} px-3 py-2 fs-6">
+                        {{ result.risk_level }} Risk
+                    </span>
+                </div>
+                
+                <!-- Dynamic Progress Gauge Row -->
+                <div class="progress my-3" style="height: 12px; border-radius: 6px;">
+                    <div class="progress-bar {% if result.risk_level == 'High' %}bg-danger{% elif result.risk_level == 'Moderate' %}bg-warning{% else %}bg-success{% endif %}" 
+                         role="progressbar" 
+                         style="width: {{ result.risk_percent }}%;"></div>
+                </div>
+                
+                <p class="text-muted small">
+                    The model classifies this candidate profile into the <strong>{{ result.risk_level | lower }} stroke-risk band</strong> based on patterns from historical patient instances. This serves as an estimate, not a diagnosis.
+                </p>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-sm">Run Another Assessment</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 2: NEW! Machine Learning Decision Drivers Bar Chart Visualization -->
+        <div class="col">
+            <div class="card h-100 p-4 shadow-sm">
+                <span class="text-muted text-uppercase small tracking-wider">Model Decision Drivers</span>
+                <p class="text-muted small my-2">
+                    Relative mathematical impact of each clinical signature toward generating this predictive classification.
+                </p>
+                <div class="chart-container" style="position: relative; height: 260px; width: 100%;">
+                    <canvas id="importanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
     </div>
+</div>
 
-    <div class="gauge">
-      <div class="gauge-fill" style="width: {{ result.risk_percent }}%;"></div>
-    </div>
+<!-- Embedded Script to map Python dictionaries dynamically to Chart.js context layout -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Safely extract the sorted importance object dictionary passed down by Flask
+        const rawWeights = {{ result.importance_data | tojson | safe }};
+        
+        // Take the top 6 driving indicators for a clean layout presentation
+        const chartLabels = Object.keys(rawWeights).slice(0, 6);
+        const chartValues = Object.values(rawWeights).slice(0, 6);
 
-    <p class="result-note">
-      {% if result.prediction == 1 %}
-        The model classifies this patient profile in the <strong>elevated stroke-risk</strong> band, based on patterns learned from historical patient data.
-      {% else %}
-        The model classifies this patient profile in the <strong>lower stroke-risk</strong> band, based on patterns learned from historical patient data.
-      {% endif %}
-      This is a statistical estimate from a {{ result.model_name }} classifier &mdash; not a diagnosis.
-    </p>
-  </div>
-
-  <div class="input-summary">
-    <h3>Details submitted</h3>
-    <dl>
-      <div><dt>Age</dt><dd>{{ form.age }}</dd></div>
-      <div><dt>Gender</dt><dd>{{ form.gender }}</dd></div>
-      <div><dt>Avg. glucose level</dt><dd>{{ form.avg_glucose_level }} mg/dL</dd></div>
-      <div><dt>BMI</dt><dd>{{ form.bmi if form.bmi else "Estimated" }}</dd></div>
-      <div><dt>Hypertension</dt><dd>{{ "Yes" if form.hypertension == "1" else "No" }}</dd></div>
-      <div><dt>Heart disease</dt><dd>{{ "Yes" if form.heart_disease == "1" else "No" }}</dd></div>
-      <div><dt>Ever married</dt><dd>{{ form.ever_married }}</dd></div>
-      <div><dt>Work type</dt><dd>{{ form.work_type }}</dd></div>
-      <div><dt>Residence</dt><dd>{{ form.Residence_type }}</dd></div>
-      <div><dt>Smoking status</dt><dd>{{ form.smoking_status }}</dd></div>
-    </dl>
-  </div>
-
-  <a href="{{ url_for('home') }}" class="submit-btn secondary">Run another assessment</a>
-</section>
+        const canvasContext = document.getElementById('importanceChart').getContext('2d');
+        new Chart(canvasContext, {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Relative Structural Impact',
+                    data: chartValues,
+                    backgroundColor: 'rgba(20, 143, 143, 0.75)', // Clinical teal style matching your header theme
+                    borderColor: 'rgba(20, 143, 143, 1)',
+                    borderWidth: 1.5,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y', // Rotates chart into clean horizontal rows
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false } // Hide redundant category indicator box
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Relative Metric Weight (%)', font: { size: 11 } }
+                    },
+                    y: {
+                        ticks: { font: { size: 11, weight: '500' } }
+                    }
+                }
+            }
+        });
+    });
+</script>
 
 {% endblock %}
