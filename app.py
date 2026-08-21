@@ -86,12 +86,22 @@ def predict():
             risk_level = "Low"
             risk_class = "low"
 
+        # Clean and format the loaded feature importance data for the chart layout
+        chart_importance = {}
+        for feature, weight in feature_importance.items():
+            clean_name = feature.replace('_', ' ').title()
+            chart_importance[clean_name] = round(float(weight) * 100, 1)
+
+        # Sort features so the strongest drivers show first
+        sorted_importance = dict(sorted(chart_importance.items(), key=lambda item: item[1], reverse=True))
+
         result = {
             "prediction": prediction,
             "risk_percent": risk_percent,
             "risk_level": risk_level,
             "risk_class": risk_class,
             "model_name": model_name,
+            "importance_data": sorted_importance
         }
         return render_template("result.html", result=result, form=request.form)
 
