@@ -5,12 +5,14 @@
 <script src="https://jsdelivr.net"></script>
 
 <div class="container mt-4">
-    <!-- Split Layout Grid: Side-by-side on desktop screen profiles, vertical stack on smartphones -->
+    <!-- Grid Split: 2 columns on desktop, stacks vertically on mobile devices -->
     <div class="row row-cols-1 row-cols-md-2 g-4">
         
-        <!-- COLUMN 1: Clinical Assessment Result Card -->
-        <div class="col">
-            <div class="card h-100 p-4 shadow-sm border-start border-4 {% if result.risk_level == 'High' %}border-danger{% elif result.risk_level == 'Moderate' %}border-warning{% else %}border-success{% endif %}">
+        <!-- COLUMN 1: Assessment Result Card & Details Submitted -->
+        <div class="col-md-6 d-flex flex-column gap-4">
+            
+            <!-- Result Box -->
+            <div class="card p-4 shadow-sm border-start border-4 {% if result.risk_level == 'High' %}border-danger{% elif result.risk_level == 'Moderate' %}border-warning{% else %}border-success{% endif %}">
                 <span class="text-muted text-uppercase small tracking-wider">Assessment Result</span>
                 
                 <div class="d-flex align-items-center gap-3 my-3">
@@ -20,7 +22,6 @@
                     </span>
                 </div>
                 
-                <!-- Dynamic Progress Gauge Row -->
                 <div class="progress my-3" style="height: 12px; border-radius: 6px;">
                     <div class="progress-bar {% if result.risk_level == 'High' %}bg-danger{% elif result.risk_level == 'Moderate' %}bg-warning{% else %}bg-success{% endif %}" 
                          role="progressbar" 
@@ -31,20 +32,37 @@
                     The model classifies this candidate profile into the <strong>{{ result.risk_level | lower }} stroke-risk band</strong> based on patterns from historical patient instances. This serves as an estimate, not a diagnosis.
                 </p>
                 
-                <div class="mt-4">
+                <div class="mt-2">
                     <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-sm">Run Another Assessment</a>
+                </div>
+            </div>
+
+            <!-- RESTORED: Details Submitted Box -->
+            <div class="card p-4 shadow-sm">
+                <span class="text-muted text-uppercase small tracking-wider mb-3 d-block">Details Submitted</span>
+                <div class="row g-3">
+                    <div class="col-6"><small class="text-muted d-block">AGE</small><strong>{{ form.age }}</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">GENDER</small><strong>{{ form.gender | title }}</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">AVG. GLUCOSE LEVEL</small><strong>{{ form.avg_glucose_level }} mg/dL</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">BMI</small><strong>{{ form.bmi if form.bmi else 'Estimated' }}</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">HYPERTENSION</small><strong>{% if form.hypertension == '1' %}Yes{% else %}No{% endif %}</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">HEART DISEASE</small><strong>{% if form.heart_disease == '1' %}Yes{% else %}No{% endif %}</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">EVER MARRIED</small><strong>{{ form.ever_married | title }}</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">WORK TYPE</small><strong>{{ form.work_type | replace('_', ' ') | title }}</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">RESIDENCE</small><strong>{{ form.Residence_type | title }}</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">SMOKING STATUS</small><strong>{{ form.smoking_status | replace('_', ' ') | title }}</strong></div>
                 </div>
             </div>
         </div>
 
-        <!-- COLUMN 2: NEW! Machine Learning Decision Drivers Bar Chart Visualization -->
-        <div class="col">
+        <!-- COLUMN 2: Model Decision Drivers Bar Chart Visualization -->
+        <div class="col-md-6">
             <div class="card h-100 p-4 shadow-sm">
                 <span class="text-muted text-uppercase small tracking-wider">Model Decision Drivers</span>
                 <p class="text-muted small my-2">
                     Relative mathematical impact of each clinical signature toward generating this predictive classification.
                 </p>
-                <div class="chart-container" style="position: relative; height: 260px; width: 100%;">
+                <div class="chart-container" style="position: relative; height: 380px; width: 100%;">
                     <canvas id="importanceChart"></canvas>
                 </div>
             </div>
@@ -56,12 +74,10 @@
 <!-- Embedded Script to map Python dictionaries dynamically to Chart.js context layout -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        // Safely extract the sorted importance object dictionary passed down by Flask
         const rawWeights = {{ result.importance_data | tojson | safe }};
         
-        // Take the top 6 driving indicators for a clean layout presentation
-        const chartLabels = Object.keys(rawWeights).slice(0, 6);
-        const chartValues = Object.values(rawWeights).slice(0, 6);
+        const chartLabels = Object.keys(rawWeights);
+        const chartValues = Object.values(rawWeights);
 
         const canvasContext = document.getElementById('importanceChart').getContext('2d');
         new Chart(canvasContext, {
@@ -82,7 +98,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false } // Hide redundant category indicator box
+                    legend: { display: false }
                 },
                 scales: {
                     x: {
